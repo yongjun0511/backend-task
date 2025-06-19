@@ -1,5 +1,5 @@
 package validator
 
 type Validator interface {
-	ValidateLine(line string) (bool, string)
+	ValidateLine(line string) (bool, ValidationError)
 }
