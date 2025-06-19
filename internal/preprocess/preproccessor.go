@@ -2,11 +2,9 @@ package preprocess
 
 import (
 	"bufio"
-	"log"
 	"os"
 
 	"banksalad-backend-task/internal/domain"
-	"banksalad-backend-task/internal/filter"
 	"banksalad-backend-task/internal/parser"
 	"banksalad-backend-task/internal/validator"
 )
@@ -15,47 +13,45 @@ type Preprocessor struct {
 	path      string
 	parser    parser.Parser
 	validator validator.Validator
-	filter    filter.ContactFilter
 }
 
-func NewPreprocessor(path string, p parser.Parser, v validator.Validator, f filter.ContactFilter) *Preprocessor {
+func NewPreprocessor(
+	path string,
+	p parser.Parser,
+	v validator.Validator,
+) *Preprocessor {
 	return &Preprocessor{
 		path:      path,
 		parser:    p,
 		validator: v,
-		filter:    f,
 	}
 }
 
-func (pp *Preprocessor) Run() (map[string]struct{}, map[string]struct{}, error) {
+func (pp *Preprocessor) Run() (map[domain.ChannelType]map[string]struct{}, error) {
 	f, err := os.Open(pp.path)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer f.Close()
 
-	var records []domain.UserRecord
-	sc := bufio.NewScanner(f)
-	lineNum := 1
+	// 🔑 키 타입을 domain.ChannelType으로!
+	result := make(map[domain.ChannelType]map[string]struct{})
 
+	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := sc.Text()
 
-		if ok, reason := pp.validator.ValidateLine(line); !ok {
-			log.Printf("[Validation Error] line %d: %s\nReason: %s\n", lineNum, line, reason)
-			lineNum++
+		vals, ok := pp.parser.ParseLine(line)
+		if !ok {
 			continue
 		}
 
-		record := pp.parser.ParseLine(line)
-		records = append(records, record)
-		lineNum++
+		for _, cv := range vals {
+			if _, exists := result[cv.Channel]; !exists {
+				result[cv.Channel] = make(map[string]struct{})
+			}
+			result[cv.Channel][cv.Value] = struct{}{}
+		}
 	}
-
-	if err := sc.Err(); err != nil {
-		return nil, nil, err
-	}
-
-	emailSet, phoneSet := pp.filter.Extract(records)
-	return emailSet, phoneSet, nil
+	return result, sc.Err()
 }
