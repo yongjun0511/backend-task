@@ -1,12 +1,12 @@
 package preprocess
 
 import (
+	"banksalad-backend-task/internal/handler/preprocess/parser"
+	"banksalad-backend-task/internal/handler/preprocess/validator"
 	"bufio"
 	"os"
 
 	"banksalad-backend-task/internal/domain"
-	"banksalad-backend-task/internal/parser"
-	"banksalad-backend-task/internal/validator"
 )
 
 type Preprocessor struct {
@@ -34,7 +34,6 @@ func (pp *Preprocessor) Run() (map[domain.ChannelType]map[string]struct{}, error
 	}
 	defer f.Close()
 
-	// 🔑 키 타입을 domain.ChannelType으로!
 	result := make(map[domain.ChannelType]map[string]struct{})
 
 	sc := bufio.NewScanner(f)
