@@ -10,7 +10,7 @@ type ValidationError string
 
 const (
 	ErrEmptyLine     ValidationError = "빈줄입니다"
-	ErrInvalidLength ValidationError = "데이터의 형식이 올바르지 않습니다 (길이 >= 73)"
+	ErrInvalidLength ValidationError = "데이터의 형식과 길이 올바르지 않습니다)"
 	ErrInvalidEmail  ValidationError = "이메일 형식이 올바르지 않습니다"
 	ErrInvalidPhone  ValidationError = "전화번호 형식이 올바르지 않습니다 (000-0000-0000)"
 	ErrInvalidScore  ValidationError = "신용 등급 정보 형식이 올바르지 않습니다."
