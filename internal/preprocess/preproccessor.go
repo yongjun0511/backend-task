@@ -18,11 +18,12 @@ type Preprocessor struct {
 	filter    filter.ContactFilter
 }
 
-func NewPreprocessor(path string, p parser.Parser, v validator.Validator) *Preprocessor {
+func NewPreprocessor(path string, p parser.Parser, v validator.Validator, f filter.ContactFilter) *Preprocessor {
 	return &Preprocessor{
 		path:      path,
 		parser:    p,
 		validator: v,
+		filter:    f,
 	}
 }
 
