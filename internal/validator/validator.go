@@ -1,0 +1,5 @@
+package validator
+
+type Validator interface {
+	ValidateLine(line string) (bool, string)
+}
