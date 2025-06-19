@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"banksalad-backend-task/internal/domain"
+	"banksalad-backend-task/internal/filter"
 	"banksalad-backend-task/internal/parser"
 	"banksalad-backend-task/internal/validator"
 )
@@ -14,6 +15,7 @@ type Preprocessor struct {
 	path      string
 	parser    parser.Parser
 	validator validator.Validator
+	filter    filter.ContactFilter
 }
 
 func NewPreprocessor(path string, p parser.Parser, v validator.Validator) *Preprocessor {
@@ -24,10 +26,10 @@ func NewPreprocessor(path string, p parser.Parser, v validator.Validator) *Prepr
 	}
 }
 
-func (pp *Preprocessor) Run() ([]domain.UserRecord, error) {
+func (pp *Preprocessor) Run() (map[string]struct{}, map[string]struct{}, error) {
 	f, err := os.Open(pp.path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer f.Close()
 
@@ -46,7 +48,13 @@ func (pp *Preprocessor) Run() ([]domain.UserRecord, error) {
 
 		record := pp.parser.ParseLine(line)
 		records = append(records, record)
-
+		lineNum++
 	}
-	return records, sc.Err()
+
+	if err := sc.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	emailSet, phoneSet := pp.filter.Extract(records)
+	return emailSet, phoneSet, nil
 }

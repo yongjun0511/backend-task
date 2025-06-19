@@ -2,7 +2,9 @@ package filter
 
 import "banksalad-backend-task/internal/domain"
 
-func ExtractUniqueContacts(records []domain.UserRecord) (map[string]struct{}, map[string]struct{}) {
+type DefaultContactFilter struct{}
+
+func (f *DefaultContactFilter) Extract(records []domain.UserRecord) (map[string]struct{}, map[string]struct{}) {
 	emailSet := make(map[string]struct{})
 	phoneSet := make(map[string]struct{})
 
