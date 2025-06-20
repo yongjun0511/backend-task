@@ -2,6 +2,7 @@ package channelhandler
 
 import (
 	"log"
+	"sync"
 	"time"
 
 	"banksalad-backend-task/clients"
@@ -14,6 +15,7 @@ const (
 
 type SMSHandler struct {
 	client *clients.SmsClient
+	mu     sync.Mutex
 }
 
 func NewSMSHandler() *SMSHandler {
@@ -25,7 +27,7 @@ func NewSMSHandler() *SMSHandler {
 func (h *SMSHandler) TargetField() domain.FieldType { return domain.PhoneField }
 
 func (h *SMSHandler) SendBatch(values []string) error {
-	queue := make(chan string, len(values)*2) // 충분히 큰 버퍼
+	queue := make(chan string, len(values)*2)
 	for _, v := range values {
 		queue <- v
 	}
@@ -58,9 +60,16 @@ func (h *SMSHandler) worker(queue chan string, tokenCh chan struct{}) {
 		select {
 		case phone := <-queue:
 			<-tokenCh
-			if err := h.client.Send(phone, "신용 점수가 상승했습니다!"); err != nil {
+			for {
+				h.mu.Lock()
+				err := h.client.Send(phone, "신용 점수가 상승했습니다!")
+				h.mu.Unlock()
+
+				if err == nil {
+					break
+				}
 				log.Printf("[WARN] SMS 실패 → 다음 초 재시도: %s", phone)
-				queue <- phone
+				time.Sleep(10 * time.Millisecond)
 			}
 		case <-time.After(2 * time.Second):
 			if len(queue) == 0 {
