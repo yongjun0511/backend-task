@@ -16,10 +16,47 @@
 
 ### 4.etc (수정하지 말 것)
 - 'clients/email_client.go'
-- `clients/sms_client.go`
+- 'clients/sms_client.go'
+
+위의 내용을 로직에 따라서 잘 되는지 한번 더 점검하고 test 코드도 짜보자.
+
+
+### 5. refactoring 중점 사항 및 컨밴션 적용 checklist
+- [x] Concurrent Safe 하게 설계하면서 병렬성을 신경쓰자 -> 기록의 한계로 병렬적 처리는 힘들어 보임. 대신 다른 txt를 만지는 경우는 병렬성을 신경썻다.
+- [ ] Error에 대한 스택 트레이스와 스택 관리
+- [ ] 앱 초반에 치명적인 경우 main() 만쓰기 때문에 Panic이 아닌 Fatal을 사용 (Must 붙이기)
+- [ ] go 루틴에서 error 반환값을 모아서 Mutil error로 관리하기
+- [ ] Error Handling 내부 내용 잘 작성하기 
+- [ ] Error Logging (defer, 핸들러에서 로그찍지말고 위로 넘기기, 공통 인터셉터)
+- [ ] No_Named Return 사용
+- [ ] Slice 선언시 미리 용량 정해두기
+- [ ] Slice가 비어있는 것은 len으로 확인 (Nil 사용 x)
+- [ ] map[string]struct{} 고려 가능 (map[string] bool 말고)
+- [ ] map loop은 순서를 보장하지 않는다
+- [ ] 문자열 loop시 range사용 -> 안 쓸 것 같긴함
+- [ ] Early Return 사용
+- [ ] 시간을 다룰 때 Time.duration 사용하기
+- [ ] 기본 인자 사용하기 (default 인자)
+
+
+뱅샐 코딩 스타일
+- [ ] 함수 인자 순서 고려 (중요한 것 먼저쓰기)
+- [ ] 선언 순서도 컨밴션이다
+- [ ] import 순서는 3개로 관리 
+- [ ] 단수는 get 복수는 list
+- [ ] const 네이밍은 카멜 케이스
+- [ ] 최소한의 패키지를 유지하도록 노력할 것
+
+📌 뱅크샐러드 go 2023 컨밴션 참고
+https://blog.banksalad.com/tech/go-best-practice-in-banksalad/
 
 ---
 
+벨리데이션에서 발생하는 문제는 에러가 맞나? -> 위치 잘못된거 등등.. 사실 걸린는게 없긴해
+
+
+
+---
 ### 평가 기준
 
 - 정확성 : 별도의 test_data로 실행했을 경우 제대로 작동하는가 (예외 사항에 대한 고민이 필요하다)
