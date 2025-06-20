@@ -18,16 +18,16 @@ var UserFieldDefinitions = map[FieldType]FieldMeta{
 	EmailField: {
 		Start:     0,
 		End:       50,
-		RegexExpr: `^[^\s@]+@[^\s@]+\.[^\s@]+$`,
+		RegexExpr: `^[^\s@]+@[^\s@]+\.[^\s@]+$`, // XXXX@XXXX. 형태
 	},
 	PhoneField: {
 		Start:     50,
 		End:       72,
-		RegexExpr: `^\d{3}-\d{4}-\d{4}$`,
+		RegexExpr: `^\d{3}-\d{4}-\d{4}$`, // 000-0000-0000 형태
 	},
 	ScoreUpField: {
 		Start:     72,
 		End:       73,
-		RegexExpr: `^[YN]$`,
+		RegexExpr: `^[YN]$`, // Y 또는 N
 	},
 }
