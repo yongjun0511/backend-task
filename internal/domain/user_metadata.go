@@ -17,17 +17,17 @@ type FieldMeta struct {
 var UserFieldDefinitions = map[FieldType]FieldMeta{
 	EmailField: {
 		Start:     0,
-		End:       40,
+		End:       50,
 		RegexExpr: `^[^\s@]+@[^\s@]+\.[^\s@]+$`,
 	},
 	PhoneField: {
-		Start:     41,
-		End:       59,
+		Start:     50,
+		End:       72,
 		RegexExpr: `^\d{3}-\d{4}-\d{4}$`,
 	},
 	ScoreUpField: {
-		Start:     60,
-		End:       61,
+		Start:     72,
+		End:       73,
 		RegexExpr: `^[YN]$`,
 	},
 }
