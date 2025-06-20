@@ -26,7 +26,6 @@ func NewNotifier(list []channelhandler.ChannelHandler) *Notifier {
 	}
 	return &Notifier{handlers: m}
 }
-
 func (n *Notifier) NotifyAll(data map[domain.ChannelDTO]map[string]struct{}) error {
 	var (
 		wg    sync.WaitGroup
@@ -40,15 +39,15 @@ func (n *Notifier) NotifyAll(data map[domain.ChannelDTO]map[string]struct{}) err
 	}
 
 	for _, b := range bkts.good {
-		wg.Add(1)
-		go func(b bucket) {
-			defer wg.Done()
-			for _, v := range b.values {
-				if err := sendUntilSuccess(b.handler, v); err != nil {
+		for _, v := range b.values {
+			wg.Add(1)
+			go func(h channelhandler.ChannelHandler, val string) {
+				defer wg.Done()
+				if err := sendUntilSuccess(h, val); err != nil {
 					once.Do(func() { first = err })
 				}
-			}
-		}(b)
+			}(b.handler, v)
+		}
 	}
 
 	wg.Wait()

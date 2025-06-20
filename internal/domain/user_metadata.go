@@ -22,12 +22,12 @@ var UserFieldDefinitions = map[FieldType]FieldMeta{
 	},
 	PhoneField: {
 		Start:     50,
-		End:       72,
+		End:       71,
 		RegexExpr: `^\d{3}-\d{4}-\d{4}$`, // 000-0000-0000 형태
 	},
 	ScoreUpField: {
-		Start:     72,
-		End:       73,
+		Start:     71,
+		End:       72,
 		RegexExpr: `^[YN]$`, // Y 또는 N
 	},
 }
