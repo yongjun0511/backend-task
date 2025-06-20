@@ -2,17 +2,10 @@ package notifier
 
 import (
 	"fmt"
-	"log"
 	"sync"
-	"time"
 
 	"banksalad-backend-task/internal/domain"
 	"banksalad-backend-task/internal/handler/notifier/channelhandler"
-)
-
-const (
-	startBackoff = 50 * time.Millisecond
-	maxBackoff   = time.Second
 )
 
 type Notifier struct {
@@ -26,6 +19,7 @@ func NewNotifier(list []channelhandler.ChannelHandler) *Notifier {
 	}
 	return &Notifier{handlers: m}
 }
+
 func (n *Notifier) NotifyAll(data map[domain.ChannelDTO]map[string]struct{}) error {
 	var (
 		wg    sync.WaitGroup
@@ -39,15 +33,13 @@ func (n *Notifier) NotifyAll(data map[domain.ChannelDTO]map[string]struct{}) err
 	}
 
 	for _, b := range bkts.good {
-		for _, v := range b.values {
-			wg.Add(1)
-			go func(h channelhandler.ChannelHandler, val string) {
-				defer wg.Done()
-				if err := sendUntilSuccess(h, val); err != nil {
-					once.Do(func() { first = err })
-				}
-			}(b.handler, v)
-		}
+		wg.Add(1)
+		go func(b bucket) {
+			defer wg.Done()
+			if err := b.handler.SendBatch(b.values); err != nil {
+				once.Do(func() { first = err })
+			}
+		}(b)
 	}
 
 	wg.Wait()
@@ -68,7 +60,6 @@ func groupByFieldType(
 	all map[domain.FieldType]channelhandler.ChannelHandler,
 	data map[domain.ChannelDTO]map[string]struct{},
 ) bucketResult {
-
 	res := bucketResult{}
 	bk := map[domain.FieldType]*bucket{}
 
@@ -91,21 +82,4 @@ func groupByFieldType(
 		res.good = append(res.good, *b)
 	}
 	return res
-}
-
-func sendUntilSuccess(h channelhandler.ChannelHandler, v string) error {
-	backoff := startBackoff
-	for {
-		if err := h.Send(v); err == nil {
-			return nil
-		}
-		log.Printf("[WARN] send failed, retrying in %v for %s", backoff, v)
-		time.Sleep(backoff)
-		if backoff < maxBackoff {
-			backoff *= 2
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
-		}
-	}
 }

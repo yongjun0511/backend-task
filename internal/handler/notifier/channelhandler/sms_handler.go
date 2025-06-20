@@ -1,10 +1,15 @@
 package channelhandler
 
 import (
+	"log"
 	"time"
 
 	"banksalad-backend-task/clients"
 	"banksalad-backend-task/internal/domain"
+)
+
+const (
+	tokenPerSec = 100
 )
 
 type SMSHandler struct {
@@ -17,11 +22,50 @@ func NewSMSHandler() *SMSHandler {
 	}
 }
 
-func (h *SMSHandler) TargetField() domain.FieldType {
-	return domain.PhoneField
+func (h *SMSHandler) TargetField() domain.FieldType { return domain.PhoneField }
+
+func (h *SMSHandler) SendBatch(values []string) error {
+	queue := make(chan string, len(values)*2) // 충분히 큰 버퍼
+	for _, v := range values {
+		queue <- v
+	}
+
+	tokenCh := make(chan struct{}, tokenPerSec)
+	go refillTokens(tokenCh)
+
+	for i := 0; i < tokenPerSec; i++ {
+		go h.worker(queue, tokenCh)
+	}
+
+	for len(queue) > 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil
 }
 
-func (h *SMSHandler) Send(value string) error {
-	time.Sleep(10 * time.Millisecond) // 초당 100건 제한을 단순하게 반영 -> 나중에 수정해야할듯
-	return h.client.Send(value, "신용 점수가 상승했습니다!")
+func refillTokens(tokenCh chan struct{}) {
+	ticker := time.NewTicker(1 * time.Second)
+	for {
+		<-ticker.C
+		for i := 0; i < tokenPerSec; i++ {
+			tokenCh <- struct{}{}
+		}
+	}
+}
+
+func (h *SMSHandler) worker(queue chan string, tokenCh chan struct{}) {
+	for {
+		select {
+		case phone := <-queue:
+			<-tokenCh
+			if err := h.client.Send(phone, "신용 점수가 상승했습니다!"); err != nil {
+				log.Printf("[WARN] SMS 실패 → 다음 초 재시도: %s", phone)
+				queue <- phone
+			}
+		case <-time.After(2 * time.Second):
+			if len(queue) == 0 {
+				return
+			}
+		}
+	}
 }
