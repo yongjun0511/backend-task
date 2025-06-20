@@ -33,16 +33,16 @@ func NewDefaultValidator() *DefaultValidator {
 func (v *DefaultValidator) ValidateLine(line string) (bool, error) {
 	for ft, meta := range domain.UserFieldDefinitions {
 		if meta.End > len(line) {
-			return false, ValidationError{
+			return false, &ValidationError{
 				Field:  ft,
 				Raw:    line,
-				Reason: "데이터 길이 오류 ",
+				Reason: "데이터 길이 오류",
 			}
 		}
 
 		raw := strings.TrimSpace(line[meta.Start:meta.End])
 		if !v.patterns[ft].MatchString(raw) {
-			return false, ValidationError{
+			return false, &ValidationError{
 				Field:  ft,
 				Raw:    raw,
 				Reason: "데이터 형식 오류",
