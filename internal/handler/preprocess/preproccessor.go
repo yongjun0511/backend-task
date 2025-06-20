@@ -27,14 +27,14 @@ func NewPreprocessor(
 	}
 }
 
-func (pp *Preprocessor) Run() (map[domain.ChannelType]map[string]struct{}, error) {
+func (pp *Preprocessor) Run() (map[domain.ChannelDTO]map[string]struct{}, error) {
 	f, err := os.Open(pp.path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	result := make(map[domain.ChannelType]map[string]struct{})
+	result := make(map[domain.ChannelDTO]map[string]struct{})
 
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
@@ -45,11 +45,11 @@ func (pp *Preprocessor) Run() (map[domain.ChannelType]map[string]struct{}, error
 			continue
 		}
 
-		for _, cv := range vals {
-			if _, exists := result[cv.Channel]; !exists {
-				result[cv.Channel] = make(map[string]struct{})
+		for _, fv := range vals {
+			if _, exists := result[fv.FieldType]; !exists {
+				result[fv.Field] = make(map[string]struct{})
 			}
-			result[cv.Channel][cv.Value] = struct{}{}
+			result[fv.Field][fv.Value] = struct{}{}
 		}
 	}
 	return result, sc.Err()
