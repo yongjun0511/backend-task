@@ -1,14 +1,38 @@
 package main
 
 import (
-	banksalad_backend "banksalad-backend-task/internal"
-	"fmt"
+	"banksalad-backend-task/internal/handler/preprocess"
+	"log"
+
+	"banksalad-backend-task/internal/handler/notifier"
+	"banksalad-backend-task/internal/handler/notifier/channelhandler"
+	"banksalad-backend-task/internal/handler/preprocess/parser"
+	"banksalad-backend-task/internal/handler/preprocess/validator"
 )
 
 func main() {
-	fmt.Println("START")
+	pp := preprocess.NewPreprocessor(
+		"files/input/data.txt",
+		parser.NewDefaultParser(),
+		validator.NewDefaultValidator(),
+	)
 
-	banksalad_backend.Solution()
+	result, err := pp.Run()
+	if err != nil {
+		log.Fatalf("[ERROR] Preprocessing failed: %v", err)
+	}
 
-	fmt.Println("END")
+	emailHandler := channelhandler.NewEmailHandler()
+	smsHandler := channelhandler.NewSMSHandler()
+
+	nt := notifier.NewNotifier([]channelhandler.ChannelHandler{
+		emailHandler,
+		smsHandler,
+	})
+
+	if err := nt.NotifyAll(result); err != nil {
+		log.Fatalf("[ERROR] Notification failed: %v", err)
+	}
+
+	log.Println("[INFO] All notifications sent successfully.")
 }
