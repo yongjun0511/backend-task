@@ -46,10 +46,10 @@ func (pp *Preprocessor) Run() (map[domain.ChannelDTO]map[string]struct{}, error)
 		}
 
 		for _, fv := range vals {
-			if _, exists := result[fv.FieldType]; !exists {
-				result[fv.Field] = make(map[string]struct{})
+			if _, exists := result[fv]; !exists {
+				result[fv] = make(map[string]struct{})
 			}
-			result[fv.Field][fv.Value] = struct{}{}
+			result[fv][fv.Value] = struct{}{}
 		}
 	}
 	return result, sc.Err()
