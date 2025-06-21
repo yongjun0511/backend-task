@@ -48,7 +48,7 @@ func main() {
 	}
 
 	if err := nt.NotifyAll(result); err != nil {
-		log.Fatalf("[ERROR] Notification failed: %v", err)
+		logrus.WithError(err).Fatal("notification failed")
 	}
 
 	log.Println("[INFO] All notifications sent successfully.")

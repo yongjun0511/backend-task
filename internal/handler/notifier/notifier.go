@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"sync"
 
 	"banksalad-backend-task/internal/domain"
@@ -33,7 +34,9 @@ func (n *Notifier) NotifyAll(data map[domain.FieldType]map[string]struct{}) erro
 		go func(b bucket) {
 			defer wg.Done()
 			if err := b.handler.SendBatch(b.values); err != nil {
-				once.Do(func() { first = err })
+				once.Do(func() {
+					first = errors.WithStack(err)
+				})
 			}
 		}(b)
 	}
