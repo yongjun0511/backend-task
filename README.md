@@ -75,6 +75,7 @@ what was being attempted" 중
 그리고 또 병렬처리를 해버릴려면 , 결국 어떤 도메인의 그런 것들을 아는지 preprocessor가 알게 되어버리니까 병렬처리 포기하겠음. 
 현재는 아예 user_metadata 만지는 것만으로도 그게 처리가 되어서 Preprocess가 저걸의존하게 만들고싶지 않았네.
 
+notifier가 DTO를 의존하는게 맞는가? 그렇다고 생각해 나는.
 ---
 ### 평가 기준
 

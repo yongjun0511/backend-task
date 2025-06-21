@@ -13,12 +13,7 @@ var ErrUnexpectedParsing = errors.New("unsafe parsing range, validation bypassed
 type DefaultParser struct{}
 
 func mustValidateFieldRanges() {
-	for _, ft := range []domain.FieldType{
-		domain.EmailField,
-		domain.PhoneField,
-		domain.ScoreUpField,
-	} {
-		meta := domain.UserFieldDefinitions[ft]
+	for ft, meta := range domain.UserFieldDefinitions {
 		if meta.Start < 0 || meta.End < 0 || meta.Start >= meta.End {
 			panic(fmt.Sprintf("field range for %s: start=%d, end=%d",
 				ft, meta.Start, meta.End))
