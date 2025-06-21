@@ -47,7 +47,8 @@ func (h *EmailHandler) SendBatch(values []string) error {
 		}
 
 		if err != nil {
-			return errors.Wrapf(err, "email send failed after %d attempts (%s)", maxRetry, email)
+			// 기존 에러가 스택이 없는 관계로 추가해줌
+			return errors.WithStack(errors.Wrapf(err, "email send failed after %d attempts (%s)", maxRetry, email))
 		}
 	}
 	return nil

@@ -31,13 +31,13 @@ func (h *SMSHandler) SendBatch(values []string) error {
 	for _, v := range values {
 		queue <- v
 	}
-	close(queue) // ✅ 중요: 더 이상 값 안 넣는다는 신호
+	close(queue)
 
 	tokenCh := make(chan struct{}, tokenPerSec)
 	go refillTokens(tokenCh)
 
 	var wg sync.WaitGroup
-	wg.Add(len(values)) // 값을 꺼내는 수만큼 작업 예약
+	wg.Add(len(values))
 
 	for i := 0; i < tokenPerSec; i++ {
 		go h.worker(queue, tokenCh, &wg)
@@ -70,6 +70,6 @@ func (h *SMSHandler) worker(queue chan string, tokenCh chan struct{}, wg *sync.W
 			log.Printf("[WARN] SMS 실패 → 다음 초 재시도: %s", phone)
 			time.Sleep(10 * time.Millisecond)
 		}
-		wg.Done() // ✅ 작업 하나 끝났음을 알림
+		wg.Done()
 	}
 }
