@@ -1,6 +1,6 @@
 package domain
 
-type ChannelDTO struct {
-	FieldType FieldType
-	Value     string
+type UserChannelDTO struct {
+	Email string
+	SMS   string
 }

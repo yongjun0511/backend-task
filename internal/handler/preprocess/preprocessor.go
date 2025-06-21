@@ -30,46 +30,54 @@ func NewPreprocessor(
 	}
 }
 
-func (pp *Preprocessor) Run() (map[domain.ChannelDTO]map[string]struct{}, error) {
+func (pp *Preprocessor) Run() (map[domain.FieldType]map[string]struct{}, error) {
 	f, err := os.Open(pp.path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	result := make(map[domain.ChannelDTO]map[string]struct{})
+	result := make(map[domain.FieldType]map[string]struct{})
 
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := sc.Text()
 
-		err := pp.validator.ValidateLine(line)
-		if err != nil {
-			switch {
-			case errors.Is(err, validator.ErrMalformedDataFormat),
-				errors.Is(err, validator.ErrInvalidFieldConstraint):
-				logrus.WithError(err).Warn("skip invalid record during validation")
-
-			default:
-				// 로그만 남길 정도가 아닌 치명적 데이터 결함일 경우..
+		if err := pp.validator.ValidateLine(line); err != nil {
+			if errors.Is(err, validator.ErrMalformedDataFormat) ||
+				errors.Is(err, validator.ErrInvalidFieldConstraint) {
+				logrus.WithError(err).Warn("skip record during validation")
+				continue
 			}
-			continue
+			return nil, errors.WithStack(err)
 		}
 
-		vals, err := pp.parser.ParseLine(line)
+		dto, err := pp.parser.ParseLine(line) // dto: *UserChannelDTO
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		if vals == nil {
+		if dto == nil {
 			continue
 		}
 
-		for _, fv := range vals {
-			if _, exists := result[fv]; !exists {
-				result[fv] = make(map[string]struct{})
+		if dto.Email != "" {
+			if _, ok := result[domain.EmailField]; !ok {
+				result[domain.EmailField] = make(map[string]struct{})
 			}
-			result[fv][fv.Value] = struct{}{}
+			result[domain.EmailField][dto.Email] = struct{}{}
+		}
+
+		if dto.SMS != "" {
+			if _, ok := result[domain.PhoneField]; !ok {
+				result[domain.PhoneField] = make(map[string]struct{})
+			}
+			result[domain.PhoneField][dto.SMS] = struct{}{}
 		}
 	}
-	return result, sc.Err()
+
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
