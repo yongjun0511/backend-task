@@ -4,8 +4,10 @@ import (
 	"banksalad-backend-task/internal/handler/preprocess/parser"
 	"banksalad-backend-task/internal/handler/preprocess/validator"
 	"bufio"
+	"context"
 	"github.com/pkg/errors"
 	"os"
+	"sync"
 
 	"banksalad-backend-task/internal/domain"
 
@@ -29,55 +31,96 @@ func NewPreprocessor(
 		validator: v,
 	}
 }
-
-func (pp *Preprocessor) Run() (map[domain.FieldType]map[string]struct{}, error) {
+func (pp *Preprocessor) Run(ctx context.Context, workers int) (map[domain.FieldType]map[string]struct{}, error) {
 	f, err := os.Open(pp.path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	result := make(map[domain.FieldType]map[string]struct{})
+	linesCh := make(chan string, workers*4)
+	errCh := make(chan error, 1)
 
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		line := sc.Text()
+	var (
+		emailSet sync.Map
+		phoneSet sync.Map
+		wg       sync.WaitGroup
+	)
 
-		if err := pp.validator.ValidateLine(line); err != nil {
-			if errors.Is(err, validator.ErrMalformedDataFormat) ||
-				errors.Is(err, validator.ErrInvalidFieldConstraint) {
-				logrus.WithError(err).Warn("skip record during validation")
-				continue
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for line := range linesCh {
+				if ctx.Err() != nil {
+					return
+				}
+
+				if err := pp.validator.ValidateLine(line); err != nil {
+					if errors.Is(err, validator.ErrMalformedDataFormat) ||
+						errors.Is(err, validator.ErrInvalidFieldConstraint) {
+						logrus.WithError(err).Warn("skip record during validation")
+						continue
+					}
+					select {
+					case errCh <- errors.WithStack(err):
+					default:
+					}
+					return
+				}
+
+				dto, err := pp.parser.ParseLine(line)
+				if err != nil {
+					select {
+					case errCh <- errors.WithStack(err):
+					default:
+					}
+					return
+				}
+				if dto == nil {
+					continue
+				}
+
+				if dto.Email != "" {
+					emailSet.Store(dto.Email, struct{}{})
+				}
+				if dto.SMS != "" {
+					phoneSet.Store(dto.SMS, struct{}{})
+				}
 			}
-			return nil, errors.WithStack(err)
-		}
-
-		dto, err := pp.parser.ParseLine(line)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		if dto == nil {
-			continue
-		}
-
-		if dto.Email != "" {
-			if _, ok := result[domain.EmailField]; !ok {
-				result[domain.EmailField] = make(map[string]struct{})
-			}
-			result[domain.EmailField][dto.Email] = struct{}{}
-		}
-
-		if dto.SMS != "" {
-			if _, ok := result[domain.PhoneField]; !ok {
-				result[domain.PhoneField] = make(map[string]struct{})
-			}
-			result[domain.PhoneField][dto.SMS] = struct{}{}
-		}
+		}()
 	}
 
-	if err := sc.Err(); err != nil {
+	go func() {
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			select {
+			case <-ctx.Done():
+				break
+			case linesCh <- sc.Text():
+			}
+		}
+		close(linesCh)
+		if err := sc.Err(); err != nil {
+			errCh <- err
+		}
+	}()
+
+	doneCh := make(chan struct{})
+	go func() { wg.Wait(); close(doneCh) }()
+
+	select {
+	case err := <-errCh:
 		return nil, err
+	case <-doneCh:
 	}
+
+	result := map[domain.FieldType]map[string]struct{}{
+		domain.EmailField: make(map[string]struct{}),
+		domain.PhoneField: make(map[string]struct{}),
+	}
+	emailSet.Range(func(k, _ any) bool { result[domain.EmailField][k.(string)] = struct{}{}; return true })
+	phoneSet.Range(func(k, _ any) bool { result[domain.PhoneField][k.(string)] = struct{}{}; return true })
 
 	return result, nil
 }
