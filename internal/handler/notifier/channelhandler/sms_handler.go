@@ -27,21 +27,23 @@ func NewSMSHandler() *SMSHandler {
 func (h *SMSHandler) TargetField() domain.FieldType { return domain.PhoneField }
 
 func (h *SMSHandler) SendBatch(values []string) error {
-	queue := make(chan string, len(values)*2)
+	queue := make(chan string, len(values))
 	for _, v := range values {
 		queue <- v
 	}
+	close(queue) // ✅ 중요: 더 이상 값 안 넣는다는 신호
 
 	tokenCh := make(chan struct{}, tokenPerSec)
 	go refillTokens(tokenCh)
 
+	var wg sync.WaitGroup
+	wg.Add(len(values)) // 값을 꺼내는 수만큼 작업 예약
+
 	for i := 0; i < tokenPerSec; i++ {
-		go h.worker(queue, tokenCh)
+		go h.worker(queue, tokenCh, &wg)
 	}
 
-	for len(queue) > 0 {
-		time.Sleep(100 * time.Millisecond)
-	}
+	wg.Wait()
 	return nil
 }
 
@@ -54,27 +56,20 @@ func refillTokens(tokenCh chan struct{}) {
 		}
 	}
 }
+func (h *SMSHandler) worker(queue chan string, tokenCh chan struct{}, wg *sync.WaitGroup) {
+	for phone := range queue {
+		<-tokenCh
+		for {
+			h.mu.Lock()
+			err := h.client.Send(phone, "신용 점수가 상승했습니다!")
+			h.mu.Unlock()
 
-func (h *SMSHandler) worker(queue chan string, tokenCh chan struct{}) {
-	for {
-		select {
-		case phone := <-queue:
-			<-tokenCh
-			for {
-				h.mu.Lock()
-				err := h.client.Send(phone, "신용 점수가 상승했습니다!")
-				h.mu.Unlock()
-
-				if err == nil {
-					break
-				}
-				log.Printf("[WARN] SMS 실패 → 다음 초 재시도: %s", phone)
-				time.Sleep(10 * time.Millisecond)
+			if err == nil {
+				break
 			}
-		case <-time.After(2 * time.Second):
-			if len(queue) == 0 {
-				return
-			}
+			log.Printf("[WARN] SMS 실패 → 다음 초 재시도: %s", phone)
+			time.Sleep(10 * time.Millisecond)
 		}
+		wg.Done() // ✅ 작업 하나 끝났음을 알림
 	}
 }
