@@ -52,7 +52,7 @@ func (pp *Preprocessor) Run() (map[domain.FieldType]map[string]struct{}, error) 
 			return nil, errors.WithStack(err)
 		}
 
-		dto, err := pp.parser.ParseLine(line) // dto: *UserChannelDTO
+		dto, err := pp.parser.ParseLine(line)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
