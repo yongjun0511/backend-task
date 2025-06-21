@@ -1,16 +1,19 @@
 package channelhandler
 
 import (
-	"log"
 	"sync"
 	"time"
 
 	"banksalad-backend-task/clients"
 	"banksalad-backend-task/internal/domain"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 const (
-	tokenPerSec = 100
+	maxSmsRetry     = 3
+	rateLimitPerSec = 100
 )
 
 type SMSHandler struct {
@@ -24,52 +27,41 @@ func NewSMSHandler() *SMSHandler {
 	}
 }
 
-func (h *SMSHandler) TargetField() domain.FieldType { return domain.PhoneField }
+func (h *SMSHandler) TargetField() domain.FieldType {
+	return domain.PhoneField
+}
 
 func (h *SMSHandler) SendBatch(values []string) error {
-	queue := make(chan string, len(values))
-	for _, v := range values {
-		queue <- v
-	}
-	close(queue)
+	ticker := time.NewTicker(time.Second / rateLimitPerSec)
+	defer ticker.Stop()
 
-	tokenCh := make(chan struct{}, tokenPerSec)
-	go refillTokens(tokenCh)
-
-	var wg sync.WaitGroup
-	wg.Add(len(values))
-
-	for i := 0; i < tokenPerSec; i++ {
-		go h.worker(queue, tokenCh, &wg)
-	}
-
-	wg.Wait()
-	return nil
-}
-
-func refillTokens(tokenCh chan struct{}) {
-	ticker := time.NewTicker(1 * time.Second)
-	for {
+	for _, phone := range values {
 		<-ticker.C
-		for i := 0; i < tokenPerSec; i++ {
-			tokenCh <- struct{}{}
-		}
-	}
-}
-func (h *SMSHandler) worker(queue chan string, tokenCh chan struct{}, wg *sync.WaitGroup) {
-	for phone := range queue {
-		<-tokenCh
-		for {
+
+		var err error
+		for i := 0; i < maxSmsRetry; i++ {
 			h.mu.Lock()
-			err := h.client.Send(phone, "신용 점수가 상승했습니다!")
+			err = h.client.Send(phone, "신용 점수가 상승했습니다!")
 			h.mu.Unlock()
 
 			if err == nil {
 				break
 			}
-			log.Printf("[WARN] SMS 실패 → 다음 초 재시도: %s", phone)
+
+			logrus.WithFields(logrus.Fields{
+				"attempt": i + 1,
+				"max":     maxSmsRetry,
+				"phone":   phone,
+				"error":   err,
+			}).Warn("sms send failed")
+
 			time.Sleep(10 * time.Millisecond)
 		}
-		wg.Done()
+
+		if err != nil {
+			return errors.WithStack(errors.Wrapf(err, "sms send failed after %d attempts (%s)", maxSmsRetry, phone))
+		}
 	}
+
+	return nil
 }
