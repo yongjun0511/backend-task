@@ -30,12 +30,12 @@ func (v *DefaultValidator) ValidateLine(line string) error {
 	for ft, meta := range domain.UserFieldDefinitions {
 
 		if meta.End > len(line) {
-			return errors.Wrapf(ErrMalformedDataFormat, "%s", line)
+			return errors.Wrapf(ErrMalformedDataFormat, "line = %s", line)
 		}
 
 		raw := strings.TrimSpace(line[meta.Start:meta.End])
 		if !v.patterns[ft].MatchString(raw) {
-			return errors.Wrapf(ErrInvalidFieldConstraint, "%s", ft)
+			return errors.Wrapf(ErrInvalidFieldConstraint, "field = %s", ft)
 		}
 	}
 	return nil

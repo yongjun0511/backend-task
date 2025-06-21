@@ -4,6 +4,7 @@ import (
 	"banksalad-backend-task/internal/handler/preprocess/parser"
 	"banksalad-backend-task/internal/handler/preprocess/validator"
 	"bufio"
+	"github.com/pkg/errors"
 	"os"
 
 	"banksalad-backend-task/internal/domain"
@@ -44,7 +45,14 @@ func (pp *Preprocessor) Run() (map[domain.ChannelDTO]map[string]struct{}, error)
 
 		err := pp.validator.ValidateLine(line)
 		if err != nil {
-			logrus.WithError(err).Warn("skip invalid record during validation")
+			switch {
+			case errors.Is(err, validator.ErrMalformedDataFormat),
+				errors.Is(err, validator.ErrInvalidFieldConstraint):
+				logrus.WithError(err).Warn("skip invalid record during validation")
+
+			default:
+				// 로그만 남길 정도가 아닌 치명적 데이터 결함일 경우..
+			}
 			continue
 		}
 
