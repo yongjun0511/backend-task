@@ -56,8 +56,11 @@ func (pp *Preprocessor) Run() (map[domain.ChannelDTO]map[string]struct{}, error)
 			continue
 		}
 
-		vals, ok := pp.parser.ParseLine(line)
-		if !ok {
+		vals, err := pp.parser.ParseLine(line)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		if vals == nil {
 			continue
 		}
 
