@@ -26,17 +26,17 @@ func NewDefaultValidator() *DefaultValidator {
 	return &DefaultValidator{patterns: pats}
 }
 
-func (v *DefaultValidator) ValidateLine(line string) (bool, error) {
+func (v *DefaultValidator) ValidateLine(line string) error {
 	for ft, meta := range domain.UserFieldDefinitions {
 
 		if meta.End > len(line) {
-			return false, errors.Wrapf(ErrMalformedDataFormat, "data :  %s", line)
+			return errors.Wrapf(ErrMalformedDataFormat, "data :  %s", line)
 		}
 
 		raw := strings.TrimSpace(line[meta.Start:meta.End])
 		if !v.patterns[ft].MatchString(raw) {
-			return false, errors.Wrapf(ErrInvalidFieldConstraint, "field :  %s", ft)
+			return errors.Wrapf(ErrInvalidFieldConstraint, "field :  %s", ft)
 		}
 	}
-	return true, nil
+	return nil
 }
