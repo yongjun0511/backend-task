@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"strings"
 
@@ -11,9 +12,25 @@ var ErrUnexpectedParsing = errors.New("unsafe parsing range, validation bypassed
 
 type DefaultParser struct{}
 
+func mustValidateFieldRanges() {
+	for _, ft := range []domain.FieldType{
+		domain.EmailField,
+		domain.PhoneField,
+		domain.ScoreUpField,
+	} {
+		meta := domain.UserFieldDefinitions[ft]
+		if meta.Start < 0 || meta.End < 0 || meta.Start >= meta.End {
+			panic(fmt.Sprintf("field range for %s: start=%d, end=%d",
+				ft, meta.Start, meta.End))
+		}
+	}
+}
+
 func NewDefaultParser() *DefaultParser {
+	mustValidateFieldRanges()
 	return &DefaultParser{}
 }
+
 func (p *DefaultParser) ParseLine(line string) ([]domain.ChannelDTO, error) {
 	emailMeta := domain.UserFieldDefinitions[domain.EmailField]
 	phoneMeta := domain.UserFieldDefinitions[domain.PhoneField]

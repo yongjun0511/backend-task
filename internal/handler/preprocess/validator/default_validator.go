@@ -19,39 +19,28 @@ type DefaultValidator struct {
 	patterns map[domain.FieldType]*regexp.Regexp
 }
 
-func NewDefaultValidator() (*DefaultValidator, error) {
+func mustValidateUserFieldDefinitions() map[domain.FieldType]*regexp.Regexp {
 	pats := make(map[domain.FieldType]*regexp.Regexp, len(domain.UserFieldDefinitions))
 
 	for ft, meta := range domain.UserFieldDefinitions {
-
-		// 상수 index check
 		if meta.Start < 0 || meta.End < 0 || meta.Start >= meta.End {
-			return nil, fmt.Errorf("invalid field range for %s: start=%d, end=%d", ft, meta.Start, meta.End)
+			panic(fmt.Sprintf("field range for %s: start=%d, end=%d", ft, meta.Start, meta.End))
 		}
 
-		// 정규식 유무 확인
 		if strings.TrimSpace(meta.RegexExpr) == "" {
-			return nil, fmt.Errorf("missing regex expression for field %s", ft)
+			panic(fmt.Sprintf("missing regex expression for field %s", ft))
 		}
 
-		// 3. 정규식 컴파일 (에러 발생 가능성 있음)
-		re, err := regexp.Compile(meta.RegexExpr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid regex for field %s: %v", ft, err)
-		}
-
+		re := regexp.MustCompile(meta.RegexExpr)
 		pats[ft] = re
 	}
 
-	return &DefaultValidator{patterns: pats}, nil
+	return pats
 }
 
-func MustDefaultValidator() *DefaultValidator {
-	v, err := NewDefaultValidator()
-	if err != nil {
-		panic(err)
-	}
-	return v
+func NewDefaultValidator() *DefaultValidator {
+	pats := mustValidateUserFieldDefinitions()
+	return &DefaultValidator{patterns: pats}
 }
 
 func (v *DefaultValidator) ValidateLine(line string) error {
