@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"banksalad-backend-task/internal/domain"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Preprocessor struct {
@@ -40,8 +42,9 @@ func (pp *Preprocessor) Run() (map[domain.ChannelDTO]map[string]struct{}, error)
 	for sc.Scan() {
 		line := sc.Text()
 
-		isValid, err := pp.validator.ValidateLine(line)
-		if err != nil || !isValid {
+		err := pp.validator.ValidateLine(line)
+		if err != nil {
+			logrus.WithError(err).Warn("skip invalid record during validation")
 			continue
 		}
 
